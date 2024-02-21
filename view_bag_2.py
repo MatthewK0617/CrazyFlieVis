@@ -54,7 +54,7 @@ def ros_messages_to_dataframe(bag_path, topics=["/state", "/control/final"]):
     return df
 
 
-def df_to_np(df):
+def df_to_np(df, b=1):
     X = []  # states, time points, num trajectories
 
     # Remove all unnecessary values
@@ -71,24 +71,28 @@ def df_to_np(df):
     df = df.iloc[start_index:]
 
     # Append df data to X
-    for i in range(1, len(df) - 1):
+    for i in range(1, len(df) - (2*b-1)):
         if df.iloc[i].type == "control":
             # TODO add check for ensuring stacking errors do not occur
-            x_pre = df.iloc[i - 1].val
-            c = df.iloc[i].val
-            x_pos = df.iloc[i + 1].val
-
-            temp = np.concatenate((x_pre, c, x_pos))
-            X.append(temp)
+            if df.iloc[i - 1].type == "state" and df.iloc[i + (2*b-1)].type == "state":
+                x_pre = df.iloc[i - 1].val
+                c = df.iloc[i].val
+                x_pos = df.iloc[i + b].val
+                temp = np.concatenate((x_pre, c, x_pos))
+                # print(temp)
+                X.append(temp)
+            else:
+                continue
 
     X = np.array(X)
 
     Xfull = [X]  # fix this
     Xfull = np.array(Xfull)
     Xfull = Xfull.transpose(2, 1, 0)
+    Xfull = Xfull[:, 500:1500, :]
 
     print(Xfull.shape)
-    np.save("data/Xfull", Xfull)
+    np.save(f"data/Xfull_{b}_500-1500", Xfull)
 
     return Xfull
 
@@ -122,7 +126,7 @@ def plot_df_data(df):
     # plt.show()
 
 
-def plot_np_data(X):
+def plot_np_data(X, b=1):
     fig = plt.figure(figsize=(10, 6))
 
     # Assuming each of x_pre, c, and x_pos have 3 elements
@@ -152,7 +156,7 @@ def plot_np_data(X):
 
     plt.title("State and Control over Time")
     plt.legend()
-    plt.savefig("plots/plot_np.png")
+    plt.savefig(f"plots/plot_np_{b}.png")
 
 
 if __name__ == "__main__":
@@ -170,6 +174,6 @@ if __name__ == "__main__":
     df = ros_messages_to_dataframe(args.bp)
     plot_df_data(df)
 
-    Xfull = df_to_np(df)
-    print(Xfull.shape)
-    plot_np_data(Xfull)
+    buffer = 10
+    Xfull = df_to_np(df, buffer)
+    plot_np_data(Xfull, buffer)
