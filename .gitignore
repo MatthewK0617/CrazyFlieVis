@@ -1,3 +1,6 @@
 /data
 /plots
 /raw_data
+/models
+/n_step_norms
+/real_raw_data
